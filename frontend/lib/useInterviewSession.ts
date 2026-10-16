@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useConversation } from "@elevenlabs/react";
-import { analyze, getToken, saveReport, type PresenceSummary, type Report, type TranscriptLine } from "./api";
+import { analyze, getToken, saveReport, saveSessionReport, type PresenceSummary, type Report, type TranscriptLine } from "./api";
 import { emit } from "./bus";
 import { useRecorder } from "./useRecorder";
 
@@ -96,13 +96,14 @@ export function useInterviewSession({ mode, role, startTracking, stopTracking }:
             role,
             duration_s: durationS,
             transcript: transcript.map(({ role, text }) => ({ role: role === "agent" ? "interviewer" : "candidate", text })),
-            presence: { posture_pct: presence.posture_pct, eye_contact_pct: presence.eye_contact_pct, slouch_events: presence.slouch_events },
+            presence: { posture_pct: presence.posture_pct, eye_contact_pct: presence.eye_contact_pct, slouch_events: presence.slouch_events, eyes_closed_pct: presence.eyes_closed_pct, looking_away_pct: presence.looking_away_pct },
             agent_speaking: spans,
             ...(mode !== "behavioral" ? { problem: problem?.prompt, code, tests: tests && { passed: tests.passed, total: tests.total, error: tests.error } } : {}),
           },
           audio,
         );
         const report: Report = {
+          sessionId: res.session_id,
           mode,
           role,
           createdAt: Date.now(),
@@ -115,6 +116,7 @@ export function useInterviewSession({ mode, role, startTracking, stopTracking }:
           ...extra,
         };
         saveReport(report);
+        await saveSessionReport(res.session_id, report);
         router.push("/report");
       } catch (e) {
         setError(`Analysis failed: ${e instanceof Error ? e.message : String(e)}`);

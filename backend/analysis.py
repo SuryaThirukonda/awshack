@@ -40,6 +40,83 @@ def _overlaps_agent(start: float, end: float, agent: list[list[float]], pad: flo
     return any(start < e + pad and end > s - pad for s, e in agent)
 
 
+SHORT_PAUSE_S = 0.6
+LIKE_NOT_FILLER_AFTER = {"i'd", "would", "you'd", "we'd", "they'd", "looks", "look", "looked", "feel", "feels", "felt", "sounds", "something", "things"}
+
+
+def _norm(t: str) -> str:
+    return re.sub(r"[^\w']", "", t.lower())
+
+
+def _flag_words(words: list[dict]) -> tuple[list[bool], list[bool]]:
+    """Per-word (filler, stutter) flags. Scribe keeps disfluencies when no_verbatim=false."""
+    toks = [_norm(w["text"]) for w in words]
+    filler = [False] * len(words)
+    stutter = [False] * len(words)
+    for i, t in enumerate(toks):
+        prev = toks[i - 1] if i else ""
+        nxt = toks[i + 1] if i + 1 < len(toks) else ""
+        if t in FILLERS_SINGLE and not (t == "like" and prev in LIKE_NOT_FILLER_AFTER):
+            filler[i] = True
+        if f"{t} {nxt}" in FILLERS_MULTI:
+            filler[i] = filler[i + 1] = True
+        raw = words[i]["text"].strip()
+        # "th-", "I-I", "w-we" → broken-off word; "I I think" → immediate repetition
+        if re.search(r"\w[-–—]$", raw) or re.match(r"^(\w{1,4})[-–—]\1", raw, re.I):
+            stutter[i] = True
+        elif t and t == nxt and words[i + 1]["start"] - words[i]["end"] < 1.0:
+            stutter[i] = True
+    return filler, stutter
+
+
+def _fmt_ts(sec: float) -> str:
+    return f"{int(sec // 60):02d}:{int(sec % 60):02d}"
+
+
+def build_verbatim(stt: dict, filler: list[bool], stutter: list[bool], agent: list[list[float]]) -> tuple[list[dict], str]:
+    """Annotated verbatim transcript: words (with filler/stutter flags), pauses, audio events, and turn breaks."""
+    items: list[dict] = []
+    lines: list[str] = []
+    cur: list[str] = []
+    wi = 0
+    prev_end = None
+
+    def new_turn(at: float):
+        if cur:
+            lines.append(" ".join(cur))
+            cur.clear()
+        lines.append(f"\n[{_fmt_ts(at)}]")
+
+    for w in stt.get("words", []):
+        kind = w.get("type")
+        if kind == "audio_event":
+            items.append({"type": "event", "text": w["text"].strip("()[] "), "start": round(w.get("start", 0), 2)})
+            cur.append(f"({w['text'].strip('()[] ')})")
+            continue
+        if kind != "word" or not w.get("text", "").strip():
+            continue
+        if prev_end is None:
+            new_turn(w["start"])
+        else:
+            gap = w["start"] - prev_end
+            if gap >= SHORT_PAUSE_S:
+                if gap >= 20 or _overlaps_agent(prev_end, w["start"], agent):
+                    items.append({"type": "turn", "start": round(w["start"], 2)})
+                    new_turn(w["start"])
+                else:
+                    long = gap >= PAUSE_THRESHOLD_S
+                    items.append({"type": "pause", "duration": round(gap, 1), "long": long})
+                    cur.append(f"[{'long ' if long else ''}pause {gap:.1f}s]")
+        text = w["text"].strip()
+        items.append({"type": "word", "text": text, "start": round(w["start"], 2), "filler": filler[wi], "stutter": stutter[wi]})
+        cur.append(f"<{text}>" if stutter[wi] else f"*{text}*" if filler[wi] else text)
+        prev_end = w["end"]
+        wi += 1
+    if cur:
+        lines.append(" ".join(cur))
+    return items, "\n".join(lines).strip()
+
+
 def voice_metrics(stt: dict, agent_speaking: list[list[float]] | None = None) -> dict:
     """agent_speaking: [[start_s, end_s], ...] relative to recording start, so interviewer turns
     aren't counted as candidate hesitation."""
@@ -47,34 +124,38 @@ def voice_metrics(stt: dict, agent_speaking: list[list[float]] | None = None) ->
     words = [w for w in stt.get("words", []) if w.get("type") == "word" and w.get("text", "").strip()]
     events = [w["text"] for w in stt.get("words", []) if w.get("type") == "audio_event"]
     if not words:
-        return {"word_count": 0, "empty": True, "transcript": stt.get("text", "")}
+        return {"word_count": 0, "empty": True, "transcript": stt.get("text", ""), "verbatim": [], "transcript_text": ""}
 
-    tokens = [re.sub(r"[^\w']", "", w["text"].lower()) for w in words]
-    text = " ".join(tokens)
+    filler, stutter = _flag_words(words)
+    verbatim, transcript_text = build_verbatim(stt, filler, stutter, agent_speaking)
 
     filler_counts: dict[str, int] = {}
-    for t in tokens:
-        if t in FILLERS_SINGLE:
-            filler_counts[t] = filler_counts.get(t, 0) + 1
-    for phrase in FILLERS_MULTI:
-        n = len(re.findall(rf"\b{phrase}\b", text))
-        if n:
-            filler_counts[phrase] = n
+    toks = [_norm(w["text"]) for w in words]
+    i = 0
+    while i < len(toks):
+        if filler[i]:
+            pair = f"{toks[i]} {toks[i + 1]}" if i + 1 < len(toks) else ""
+            key = pair if pair in FILLERS_MULTI else toks[i]
+            filler_counts[key] = filler_counts.get(key, 0) + 1
+            i += 2 if key == pair else 1
+        else:
+            i += 1
     filler_total = sum(filler_counts.values())
+    stutter_total = sum(stutter)
 
     gaps = [max(0.0, words[i + 1]["start"] - words[i]["end"]) for i in range(len(words) - 1)]
     gap_spans = [(words[i]["end"], words[i + 1]["start"]) for i in range(len(words) - 1)]
-    # Hesitation = a long silence mid-answer, not a turn boundary where the interviewer was talking.
-    long_pauses = [
-        g for g, (s, e) in zip(gaps, gap_spans) if PAUSE_THRESHOLD_S <= g < 20 and not _overlaps_agent(s, e, agent_speaking)
-    ]
-    hesitation_gaps = [g for g, (s, e) in zip(gaps, gap_spans) if not _overlaps_agent(s, e, agent_speaking)]
+    # Hesitation = a silence mid-answer, not a turn boundary where the interviewer was talking.
+    hesitation_gaps = [g for g, (s, e) in zip(gaps, gap_spans) if g < 20 and not _overlaps_agent(s, e, agent_speaking)]
+    long_pauses = [g for g in hesitation_gaps if g >= PAUSE_THRESHOLD_S]
+    short_pauses = [g for g in hesitation_gaps if SHORT_PAUSE_S <= g < PAUSE_THRESHOLD_S]
     # Speaking time excludes every long silence (interviewer turns and thinking time).
     total_span = words[-1]["end"] - words[0]["start"]
     speaking_time = max(1.0, total_span - sum(g for g in gaps if g >= PAUSE_THRESHOLD_S))
     minutes = speaking_time / 60
     wpm = len(words) / minutes
     filler_per_min = filler_total / minutes
+    stutters_per_min = stutter_total / minutes
 
     logprobs = [w["logprob"] for w in words if isinstance(w.get("logprob"), (int, float))]
     clarity = sum(math.exp(lp) for lp in logprobs) / len(logprobs) if logprobs else None
@@ -87,8 +168,10 @@ def voice_metrics(stt: dict, agent_speaking: list[list[float]] | None = None) ->
     else:
         pace_score = _clamp(100 - (wpm - 160) * 1.5)
     filler_score = _clamp(100 - max(0.0, filler_per_min - 1) * 12)
+    stutter_score = _clamp(100 - max(0.0, stutters_per_min - 0.5) * 25)
     pause_score = _clamp(100 - len(long_pauses) / max(minutes, 0.5) * 8)
     clarity_score = _clamp((clarity or 0.85) * 100)
+    scores = {"pace": pace_score, "fillers": filler_score, "stutters": stutter_score, "pauses": pause_score, "clarity": clarity_score}
 
     return {
         "word_count": len(words),
@@ -97,18 +180,19 @@ def voice_metrics(stt: dict, agent_speaking: list[list[float]] | None = None) ->
         "filler_total": filler_total,
         "filler_per_min": round(filler_per_min, 1),
         "filler_breakdown": dict(sorted(filler_counts.items(), key=lambda kv: -kv[1])),
+        "stutter_total": stutter_total,
+        "stutters_per_min": round(stutters_per_min, 1),
+        "stutter_examples": [words[i]["text"] + " " + words[i + 1]["text"] for i in range(len(words) - 1) if stutter[i]][:8],
         "long_pauses": len(long_pauses),
-        "longest_pause_s": round(max([g for g in hesitation_gaps if g < 20], default=0.0), 1),
+        "short_pauses": len(short_pauses),
+        "longest_pause_s": round(max(hesitation_gaps, default=0.0), 1),
         "clarity": round(clarity, 3) if clarity is not None else None,
         "audio_events": events[:20],
-        "scores": {
-            "pace": pace_score,
-            "fillers": filler_score,
-            "pauses": pause_score,
-            "clarity": clarity_score,
-        },
-        "delivery_score": round((pace_score + filler_score + pause_score + clarity_score) / 4),
+        "scores": scores,
+        "delivery_score": round(sum(scores.values()) / len(scores)),
         "transcript": stt.get("text", ""),
+        "transcript_text": transcript_text,
+        "verbatim": verbatim,
     }
 
 
@@ -118,8 +202,12 @@ Data (JSON):
 {data}
 
 Notes:
-- "voice" metrics come from speech-to-text of the candidate's mic (WPM ideal 130-160, fillers ideally < 2/min).
+- "voice" metrics come from verbatim speech-to-text of the candidate's mic (WPM ideal 130-160, fillers ideally
+  < 2/min, stutters = repeated or broken-off words). "candidate_speech_transcript" is that verbatim transcript, where
+  *word* marks a filler, <word> a stutter, and [pause Ns] a hesitation.
 - If "voice" is null (no audio captured), set "delivery" to null instead of guessing.
+- "presence.eye_contact_pct" = % of time the candidate's eyes were open, visible and facing the camera
+  (eyes_closed_pct / looking_away_pct break down the rest).
 - "presence" is from webcam pose tracking (% of time with good posture / eye contact).
 - In "coding" or "sql" mode, "code" is the final Python code / SQL query, "tests" the test results, and the transcript
   includes moments where the interviewer asked the candidate to explain what they were doing right now — grade that

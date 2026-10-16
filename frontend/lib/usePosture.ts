@@ -14,16 +14,19 @@ const FRAME_MS = 100; // ~10 Hz detection
 const CALIBRATION_FRAMES = 25;
 const SLOUCH_RATIO = 0.82; // nose-to-shoulder height below 82% of baseline = slouching
 const TILT_DEG = 8;
-const HEAD_DEG = 16;
-const GAZE_AWAY = 0.6;
+// Eye contact: good whenever the eyes are open and visible; bad when closed, looking away, or not visible.
+const EYE_CLOSED = 0.5; // eyeBlinkLeft/Right blendshape score (both eyes)
+const HEAD_AWAY_DEG = 28; // head turned/tilted this far from the camera (or from the calibrated baseline)
+const GAZE_AWAY = 0.75; // eyeLook{In,Out,Up,Down} blendshape score
 
 export type PostureState = "good" | "slouch" | "tilt" | "none";
+export type EyeState = "open" | "closed" | "away" | "hidden";
 export type LiveState = {
   posture: PostureState;
-  eyeContact: boolean | null;
+  eyes: EyeState;
   calibrating: boolean;
 };
-type Sample = { posture: PostureState; eye: boolean | null };
+type Sample = { posture: PostureState; eyes: EyeState };
 type Baseline = { ratio: number; yaw: number; pitch: number };
 
 const median = (xs: number[]) => {
@@ -43,7 +46,7 @@ export function usePosture(
 ) {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [live, setLive] = useState<LiveState>({ posture: "none", eyeContact: null, calibrating: true });
+  const [live, setLive] = useState<LiveState>({ posture: "none", eyes: "hidden", calibrating: true });
 
   const poseRef = useRef<PoseLandmarker | null>(null);
   const faceRef = useRef<FaceLandmarker | null>(null);
@@ -123,19 +126,25 @@ export function usePosture(
         if (tilt > 90) tilt = 180 - tilt;
       }
 
-      // --- head pose + gaze from face landmarker
+      // --- eyes: open & visible vs closed / looking away / not visible (face landmarker)
       let yaw: number | null = null;
       let pitch: number | null = null;
-      let gazeAway = false;
       const m = faceRes.facialTransformationMatrixes?.[0]?.data;
       if (m) {
         // column-major 4x4: R[row][col] = m[col*4 + row]
         yaw = (Math.asin(Math.max(-1, Math.min(1, -m[2]))) * 180) / Math.PI;
         pitch = (Math.atan2(m[6], m[10]) * 180) / Math.PI;
       }
+      let eyes: EyeState = "hidden";
       const shapes = faceRes.faceBlendshapes?.[0]?.categories;
-      if (shapes) {
-        gazeAway = shapes.some((c) => c.categoryName.startsWith("eyeLook") && c.score > GAZE_AWAY);
+      if (faceRes.faceLandmarks?.length && shapes) {
+        const score = (name: string) => shapes.find((c) => c.categoryName === name)?.score ?? 0;
+        const closed = score("eyeBlinkLeft") > EYE_CLOSED && score("eyeBlinkRight") > EYE_CLOSED;
+        const ref = baselineRef.current ?? { yaw: 0, pitch: 0 };
+        const headAway =
+          yaw !== null && pitch !== null && (Math.abs(yaw - ref.yaw) > HEAD_AWAY_DEG || Math.abs(pitch - ref.pitch) > HEAD_AWAY_DEG);
+        const gazeAway = shapes.some((c) => c.categoryName.startsWith("eyeLook") && c.score > GAZE_AWAY);
+        eyes = closed ? "closed" : headAway || gazeAway ? "away" : "open";
       }
 
       // --- calibration (first N good frames)
@@ -150,30 +159,26 @@ export function usePosture(
           baselineRef.current = { ratio: median(c.ratio), yaw: median(c.yaw), pitch: median(c.pitch) };
         }
         draw(lm, "calibrating");
-        setLive((s) => (s.calibrating ? s : { ...s, calibrating: true }));
-        return;
       }
 
       const b = baselineRef.current;
       let posture: PostureState = "none";
-      if (ratio !== null) posture = ratio < b.ratio * SLOUCH_RATIO ? "slouch" : tilt > TILT_DEG ? "tilt" : "good";
-      let eye: boolean | null = null;
-      if (yaw !== null && pitch !== null) {
-        eye = Math.abs(yaw - b.yaw) < HEAD_DEG && Math.abs(pitch - b.pitch) < HEAD_DEG && !gazeAway;
-      }
+      if (b && ratio !== null) posture = ratio < b.ratio * SLOUCH_RATIO ? "slouch" : tilt > TILT_DEG ? "tilt" : "good";
 
-      // smooth over last ~0.6s to avoid flicker
+      // smooth over last ~0.6s so normal blinks and jitter don't flicker the state
       const hist = historyRef.current;
-      hist.push({ posture, eye });
+      hist.push({ posture, eyes });
       if (hist.length > 6) hist.shift();
-      const smoothed: Sample = { posture: mode(hist.map((h) => h.posture)), eye: mode(hist.map((h) => h.eye)) };
+      const smoothed: Sample = { posture: mode(hist.map((h) => h.posture)), eyes: mode(hist.map((h) => h.eyes)) };
       if (recordingRef.current) samplesRef.current.push(smoothed);
 
+      const calibrating = !b;
       setLive((s) =>
-        s.posture === smoothed.posture && s.eyeContact === smoothed.eye && !s.calibrating
+        s.posture === smoothed.posture && s.eyes === smoothed.eyes && s.calibrating === calibrating
           ? s
-          : { posture: smoothed.posture, eyeContact: smoothed.eye, calibrating: false },
+          : { posture: smoothed.posture, eyes: smoothed.eyes, calibrating },
       );
+      if (calibrating) return;
       draw(lm, smoothed.posture === "good" ? "good" : smoothed.posture === "none" ? "none" : "bad");
     }
 
@@ -233,7 +238,7 @@ export function usePosture(
     baselineRef.current = null;
     calibRef.current = { ratio: [], yaw: [], pitch: [] };
     historyRef.current = [];
-    setLive({ posture: "none", eyeContact: null, calibrating: true });
+    setLive({ posture: "none", eyes: "hidden", calibrating: true });
   }, []);
 
   const startTracking = useCallback(() => {
@@ -251,7 +256,6 @@ export function usePosture(
 
 function summarize(samples: Sample[]): PresenceSummary {
   const withPose = samples.filter((s) => s.posture !== "none");
-  const withFace = samples.filter((s) => s.eye !== null);
   let slouchEvents = 0;
   for (let i = 1; i < samples.length; i++) {
     if (samples[i].posture === "slouch" && samples[i - 1].posture !== "slouch") slouchEvents++;
@@ -263,16 +267,17 @@ function summarize(samples: Sample[]): PresenceSummary {
     for (let b = 0; b < Math.min(BUCKETS, samples.length); b++) {
       const chunk = samples.slice(Math.floor(b * size), Math.max(Math.floor((b + 1) * size), Math.floor(b * size) + 1));
       const bad = chunk.filter((s) => s.posture === "slouch" || s.posture === "tilt").length / chunk.length;
-      const away = chunk.filter((s) => s.eye === false).length / chunk.length;
-      const none = chunk.filter((s) => s.posture === "none" && s.eye === null).length / chunk.length;
+      const away = chunk.filter((s) => s.eyes !== "open").length / chunk.length;
+      const none = chunk.filter((s) => s.posture === "none" && s.eyes === "hidden").length / chunk.length;
       timeline.push(none > 0.5 ? "none" : bad > 0.5 && away > 0.5 ? "bad" : bad > 0.5 || away > 0.5 ? "warn" : "good");
     }
   }
+  const pct = (n: number) => (samples.length ? Math.round((100 * n) / samples.length) : 0);
   return {
-    posture_pct: withPose.length
-      ? Math.round((100 * withPose.filter((s) => s.posture === "good").length) / withPose.length)
-      : 0,
-    eye_contact_pct: withFace.length ? Math.round((100 * withFace.filter((s) => s.eye).length) / withFace.length) : 0,
+    posture_pct: withPose.length ? Math.round((100 * withPose.filter((s) => s.posture === "good").length) / withPose.length) : 0,
+    eye_contact_pct: pct(samples.filter((s) => s.eyes === "open").length),
+    eyes_closed_pct: pct(samples.filter((s) => s.eyes === "closed").length),
+    looking_away_pct: pct(samples.filter((s) => s.eyes === "away" || s.eyes === "hidden").length),
     slouch_events: slouchEvents,
     samples: samples.length,
     timeline,

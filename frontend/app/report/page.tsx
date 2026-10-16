@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle,
@@ -9,6 +9,9 @@ import {
   CheckCircle2,
   ChevronDown,
   Code2,
+  Download,
+  FolderOpen,
+  History,
   Eye,
   MessageSquareQuote,
   Mic,
@@ -19,10 +22,12 @@ import {
 } from "lucide-react";
 import { MetricBar, PostureTimeline, ScoreRing } from "@/components/charts";
 import Transcript from "@/components/Transcript";
+import VerbatimTranscript from "@/components/VerbatimTranscript";
 import { Button, Card, CardHeader, Pill } from "@/components/ui";
+import { getSession, listSessions, sessionAudioUrl, sessionTranscriptUrl, type SessionSummary } from "@/lib/api";
 import { emit, usePageContext } from "@/lib/bus";
 import { fmtTime } from "@/lib/useInterviewSession";
-import { useStoredReport } from "@/lib/useStored";
+import { setCurrentReport, useStoredReport } from "@/lib/useStored";
 
 const MODE_LABEL = { behavioral: "Regular interview", coding: "Coding interview", sql: "SQL interview" } as const;
 const RETRY_HREF = { behavioral: "/interview", coding: "/technical?kind=coding", sql: "/technical?kind=sql" } as const;
@@ -30,7 +35,34 @@ const RETRY_HREF = { behavioral: "/interview", coding: "/technical?kind=coding",
 export default function ReportPage() {
   const report = useStoredReport();
   const [showTranscript, setShowTranscript] = useState(false);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  useEffect(() => {
+    listSessions().then(setSessions).catch(() => setSessions([]));
+  }, [report?.sessionId]);
   usePageContext({ page: "report", has_report: !!report });
+
+  const openSession = async (id: string) => {
+    try {
+      setCurrentReport(JSON.stringify(await getSession(id)));
+    } catch {}
+  };
+  const history = sessions.length > 0 && (
+    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-300">
+      <History className="h-4 w-4 text-zinc-500" />
+      <select
+        value={report?.sessionId ?? ""}
+        onChange={(e) => openSession(e.target.value)}
+        className="bg-transparent text-sm text-zinc-200 outline-none [&>option]:bg-zinc-900"
+      >
+        {!report?.sessionId && <option value="">Choose a past session…</option>}
+        {sessions.map((s) => (
+          <option key={s.id} value={s.id}>
+            {new Date(s.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {MODE_LABEL[s.mode] ?? s.mode} · {s.overall ?? "—"}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 
   if (report === undefined) return null;
   if (!report) {
@@ -45,6 +77,7 @@ export default function ReportPage() {
           <Link href="/">
             <Button>Choose an interview</Button>
           </Link>
+          {history}
         </Card>
       </div>
     );
@@ -61,6 +94,10 @@ export default function ReportPage() {
 
   return (
     <div className="flex flex-col gap-5 pt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-lg font-semibold text-white">Interview report</h1>
+        {history}
+      </div>
       {/* Hero */}
       <Card className="relative overflow-hidden p-6 sm:p-8">
         <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
@@ -73,7 +110,7 @@ export default function ReportPage() {
               <Pill>{fmtTime(report.durationS)}</Pill>
               {report.problem && <Pill>{report.problem.title}</Pill>}
             </div>
-            <h1 className="text-2xl font-semibold text-white">Overall score</h1>
+            <h2 className="text-2xl font-semibold text-white">Overall score</h2>
             <p className="max-w-2xl text-sm leading-relaxed text-zinc-300">{fb.summary}</p>
             <div className="flex flex-wrap gap-2 pt-1">
               <Link href={RETRY_HREF[report.mode]}>
@@ -113,6 +150,7 @@ export default function ReportPage() {
               <>
                 <MetricBar label="Pace" value={voice.wpm ?? 0} display={`${voice.wpm} wpm`} max={220} ideal={[130, 160]} score={voice.scores?.pace} hint="Conversational sweet spot is 130–160 words per minute." />
                 <MetricBar label="Filler words" value={voice.filler_per_min ?? 0} display={`${voice.filler_total} total · ${voice.filler_per_min}/min`} max={12} ideal={[0, 2]} score={voice.scores?.fillers} hint="Aim for fewer than 2 per minute." />
+                <MetricBar label="Stutters & repetitions" value={voice.stutters_per_min ?? 0} display={`${voice.stutter_total ?? 0} total · ${voice.stutters_per_min ?? 0}/min`} max={6} ideal={[0, 0.5]} score={voice.scores?.stutters} hint={voice.stutter_examples?.length ? `e.g. “${voice.stutter_examples.slice(0, 3).join("”, “")}”` : "Repeated or broken-off words like “I- I think”."} />
                 <MetricBar label="Hesitation pauses (>2s)" value={voice.long_pauses ?? 0} display={`${voice.long_pauses} · longest ${voice.longest_pause_s}s`} max={10} ideal={[0, 2]} score={voice.scores?.pauses} />
                 <MetricBar label="Clarity" value={Math.round((voice.clarity ?? 0) * 100)} display={`${Math.round((voice.clarity ?? 0) * 100)}%`} max={100} ideal={[85, 100]} score={voice.scores?.clarity} hint="Transcription confidence — a proxy for articulation." />
                 {voice.filler_breakdown && Object.keys(voice.filler_breakdown).length > 0 && (
@@ -138,6 +176,11 @@ export default function ReportPage() {
               <Stat icon={<Eye className="h-4 w-4" />} label="Eye contact" value={`${presence.eye_contact_pct}%`} />
               <Stat icon={<TrendingUp className="h-4 w-4" />} label="Slouch events" value={String(presence.slouch_events)} />
             </div>
+            {(presence.eyes_closed_pct !== undefined || presence.looking_away_pct !== undefined) && (
+              <p className="text-xs text-zinc-500">
+                Eye contact counts time with your eyes open and visible. Eyes closed {presence.eyes_closed_pct ?? 0}% · looking away / not visible {presence.looking_away_pct ?? 0}%.
+              </p>
+            )}
             <PostureTimeline timeline={presence.timeline} />
           </div>
         </Card>
@@ -175,6 +218,42 @@ export default function ReportPage() {
         </Card>
       </div>
 
+      {/* Verbatim transcript (ElevenLabs Scribe) */}
+      <Card>
+        <CardHeader
+          title="What you said — verbatim"
+          icon={<AudioLines className="h-4 w-4" />}
+          right={
+            report.sessionId && voice?.verbatim?.length ? (
+              <a href={sessionTranscriptUrl(report.sessionId)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-zinc-200">
+                <Download className="h-3.5 w-3.5" /> transcript.txt
+              </a>
+            ) : null
+          }
+        />
+        <div className="space-y-4 p-5">
+          {report.sessionId && (
+              <audio controls src={sessionAudioUrl(report.sessionId)} className="h-10 w-full rounded-lg [color-scheme:dark]" />
+          )}
+          <div className="flex flex-wrap gap-2 text-[11px]">
+            <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-amber-200">filler</span>
+            <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-rose-200 underline decoration-wavy">stutter</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-zinc-400">pause</span>
+            <span className="rounded-full border border-rose-400/40 bg-rose-500/10 px-1.5 py-0.5 font-mono text-rose-300">long pause</span>
+          </div>
+          {voice?.verbatim ? (
+            <VerbatimTranscript items={voice.verbatim} />
+          ) : (
+            <p className="text-sm text-zinc-500">{report.voiceError ? `Transcription failed: ${report.voiceError}` : "No verbatim transcript for this session."}</p>
+          )}
+          {report.sessionId && (
+            <p className="flex items-center gap-1.5 text-xs text-zinc-500">
+              <FolderOpen className="h-3.5 w-3.5" /> Saved locally to <code className="font-mono text-zinc-400">backend/data/sessions/{report.sessionId}/</code>
+            </p>
+          )}
+        </div>
+      </Card>
+
       {report.mode !== "behavioral" && report.code !== undefined && (
         <Card>
           <CardHeader
@@ -203,7 +282,7 @@ export default function ReportPage() {
       <Card>
         <button onClick={() => setShowTranscript((s) => !s)} className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-200">
           <span className="flex items-center gap-2">
-            <MessageSquareQuote className="h-4 w-4 text-zinc-400" /> Full transcript ({report.transcript.length} turns)
+            <MessageSquareQuote className="h-4 w-4 text-zinc-400" /> Conversation with the interviewer ({report.transcript.length} turns)
           </span>
           <ChevronDown className={`h-4 w-4 text-zinc-400 transition ${showTranscript ? "rotate-180" : ""}`} />
         </button>

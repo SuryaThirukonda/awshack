@@ -5,6 +5,8 @@ export type TranscriptLine = { role: "user" | "agent"; text: string; t: number }
 export type PresenceSummary = {
   posture_pct: number;
   eye_contact_pct: number;
+  eyes_closed_pct?: number;
+  looking_away_pct?: number;
   slouch_events: number;
   samples: number;
   timeline: ("good" | "warn" | "bad" | "none")[];
@@ -41,6 +43,12 @@ export type RunResult = {
   rows?: unknown[][];
 };
 
+export type VerbatimItem =
+  | { type: "word"; text: string; start: number; filler: boolean; stutter: boolean }
+  | { type: "pause"; duration: number; long: boolean }
+  | { type: "event"; text: string; start: number }
+  | { type: "turn"; start: number };
+
 export type VoiceMetrics = {
   word_count: number;
   empty?: boolean;
@@ -49,11 +57,17 @@ export type VoiceMetrics = {
   filler_total?: number;
   filler_per_min?: number;
   filler_breakdown?: Record<string, number>;
+  stutter_total?: number;
+  stutters_per_min?: number;
+  stutter_examples?: string[];
   long_pauses?: number;
+  short_pauses?: number;
   longest_pause_s?: number;
   clarity?: number | null;
-  scores?: { pace: number; fillers: number; pauses: number; clarity: number };
+  scores?: { pace: number; fillers: number; stutters?: number; pauses: number; clarity: number };
   delivery_score?: number;
+  transcript_text?: string;
+  verbatim?: VerbatimItem[];
 };
 
 export type Feedback = {
@@ -68,6 +82,7 @@ export type Feedback = {
 };
 
 export type Report = {
+  sessionId?: string;
   mode: Mode;
   role: string;
   createdAt: number;
@@ -108,8 +123,21 @@ export async function analyze(payload: Record<string, unknown>, audio: Blob | nu
   form.append("payload", JSON.stringify(payload));
   if (audio) form.append("audio", audio, "candidate.webm");
   const res = await fetch(`${API_BASE}/api/analyze`, { method: "POST", body: form });
-  return json<{ feedback: Feedback; voice: VoiceMetrics | null; voice_error: string | null }>(res);
+  return json<{ session_id: string; feedback: Feedback; voice: VoiceMetrics | null; voice_error: string | null }>(res);
 }
+
+/** Locally saved sessions (backend/data/sessions). */
+export type SessionSummary = { id: string; mode: Mode; role: string; createdAt: number; durationS: number; overall: number; has_audio: boolean };
+export const listSessions = () => fetch(`${API_BASE}/api/sessions`).then((r) => json<SessionSummary[]>(r));
+export const getSession = (id: string) => fetch(`${API_BASE}/api/sessions/${id}`).then((r) => json<Report>(r));
+export const saveSessionReport = (id: string, report: Report) =>
+  fetch(`${API_BASE}/api/sessions/${id}/report`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(report),
+  }).catch(() => undefined);
+export const sessionAudioUrl = (id: string) => `${API_BASE}/api/sessions/${id}/audio`;
+export const sessionTranscriptUrl = (id: string) => `${API_BASE}/api/sessions/${id}/transcript.txt`;
 
 const REPORT_KEY = "poise:last-report";
 export function saveReport(r: Report) {

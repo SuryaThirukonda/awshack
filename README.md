@@ -10,8 +10,12 @@ Voice-first mock interviews with live posture coaching, voice-delivery analysis,
   The interviewer sees your code live and periodically asks *"what are you doing right now?"*.
 - **Practice**: a question bank with hints and optimal approaches. You can review any question out loud with the voice guide.
 - **Poise voice guide**: press `/` or click **Ask Poise** to navigate the app by voice. Try "start a SQL interview", "review Two Sum with me" or "explain my report".
+- **Verbatim transcript**: after each session, your mic recording goes through ElevenLabs Scribe in verbatim mode. The report shows exactly what you said, with fillers, stutters (repeated or broken-off words) and pauses highlighted, plus audio playback.
+  - Every session is saved locally to `backend/data/sessions/<id>/`: `audio.webm`, `scribe.json`, `transcript.txt`, `analysis.json` and `report.json`.
+  - Use the history picker on the Report page to reopen past sessions. `backend/data/` is gitignored.
+- **Eye contact**: counted as good whenever your eyes are open and visible. It's bad when your eyes are closed or you're looking away, using MediaPipe blink, gaze and head-pose signals.
 - **Report**: a single report page covering:
-  - Voice metrics from ElevenLabs Scribe: pace, filler words, hesitation pauses, clarity.
+  - Voice metrics from ElevenLabs Scribe: pace, filler words, stutters, hesitation pauses, clarity.
   - Posture and eye contact from MediaPipe, running in the browser.
   - AI feedback from Claude on Amazon Bedrock.
 

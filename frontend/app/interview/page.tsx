@@ -101,7 +101,7 @@ function BehavioralSession() {
           <Card className="flex min-h-[280px] flex-1 flex-col">
             <CardHeader title="Live transcript" icon={<MessagesSquare className="h-4 w-4" />} />
             <div className="scrollbar-thin max-h-[420px] flex-1 overflow-y-auto">
-              <Transcript lines={session.transcript} />
+              <Transcript lines={session.transcript} empty="Live captions appear here. A verbatim transcript with your stutters and pauses is saved with your report." />
             </div>
           </Card>
         </div>

@@ -24,6 +24,14 @@ const readRaw = () => {
   }
 };
 
+export function setCurrentReport(raw: string) {
+  try {
+    sessionStorage.setItem("poise:last-report", raw);
+    localStorage.setItem("poise:last-report", raw);
+  } catch {}
+  window.dispatchEvent(new Event("storage"));
+}
+
 /** Last saved report; `undefined` during SSR / before hydration. */
 export function useStoredReport(): Report | null | undefined {
   const raw = useSyncExternalStore(subscribe, readRaw, () => SSR);

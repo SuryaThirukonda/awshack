@@ -22,6 +22,12 @@ export default function CameraPanel({ videoRef, canvasRef, ready, error, live, o
     tilt: { tone: "warn" as const, text: "Level your shoulders" },
     none: { tone: "neutral" as const, text: "Shoulders not visible" },
   }[live.posture];
+  const eyes = {
+    open: { tone: "good" as const, text: "Good eye contact" },
+    closed: { tone: "bad" as const, text: "Eyes closed" },
+    away: { tone: "bad" as const, text: "Looking away" },
+    hidden: { tone: "bad" as const, text: "Eyes not visible" },
+  }[live.eyes];
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black ${compact ? "aspect-video" : "aspect-[4/3]"}`}>
@@ -47,21 +53,17 @@ export default function CameraPanel({ videoRef, canvasRef, ready, error, live, o
         <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 bg-gradient-to-t from-black/80 to-transparent p-3">
           {live.calibrating ? (
             <Pill tone="accent">
-              <ScanFace className="h-3.5 w-3.5" /> Calibrating — sit up & look at the camera
+              <ScanFace className="h-3.5 w-3.5" /> Calibrating posture — sit up straight
             </Pill>
           ) : (
-            <>
-              <Pill tone={posture.tone}>
-                <PersonStanding className="h-3.5 w-3.5" /> {posture.text}
-              </Pill>
-              {live.eyeContact !== null && (
-                <Pill tone={live.eyeContact ? "good" : "warn"}>
-                  {live.eyeContact ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
-                  {live.eyeContact ? "Eye contact" : "Look at the camera"}
-                </Pill>
-              )}
-            </>
+            <Pill tone={posture.tone}>
+              <PersonStanding className="h-3.5 w-3.5" /> {posture.text}
+            </Pill>
           )}
+          <Pill tone={eyes.tone}>
+            {live.eyes === "open" ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {eyes.text}
+          </Pill>
           {onRecalibrate && !compact && (
             <button
               onClick={onRecalibrate}
