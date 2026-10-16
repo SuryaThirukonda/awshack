@@ -4,8 +4,11 @@
   * Guide ("Poise")      — voice assistant that navigates the app and reviews practice questions via client tools.
 
 Usage: .venv/bin/python create_agent.py   (needs ELEVENLABS_API_KEY in .env)
+       .venv/bin/python create_agent.py --key-var ELEVENLABS_API_KEY2 --suffix 2
+           → creates the agents in another account and saves ELEVENLABS_AGENT_ID2 / ELEVENLABS_GUIDE_AGENT_ID2
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -120,8 +123,11 @@ GUIDE_TOOLS = [
 ]
 
 
+KEY_VAR = "ELEVENLABS_API_KEY"
+
+
 def post(path: str, body: dict) -> dict:
-    resp = httpx.post(f"{API}{path}", headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]}, json=body, timeout=30)
+    resp = httpx.post(f"{API}{path}", headers={"xi-api-key": os.environ[KEY_VAR]}, json=body, timeout=30)
     if resp.status_code >= 300:
         sys.exit(f"POST {path} failed ({resp.status_code}): {resp.text[:800]}")
     return resp.json()
@@ -146,8 +152,14 @@ def save_env(values: dict[str, str]) -> None:
 
 
 def main():
-    if not os.environ.get("ELEVENLABS_API_KEY"):
-        sys.exit("Set ELEVENLABS_API_KEY in .env first")
+    global KEY_VAR
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--key-var", default="ELEVENLABS_API_KEY", help="env var holding the ElevenLabs API key to use")
+    parser.add_argument("--suffix", default="", help="suffix for the saved agent id env vars, e.g. 2")
+    args = parser.parse_args()
+    KEY_VAR = args.key_var
+    if not os.environ.get(KEY_VAR):
+        sys.exit(f"Set {KEY_VAR} in .env first")
 
     interviewer = create_agent(
         "Poise — Interviewer (Alex)",
@@ -169,7 +181,7 @@ def main():
     )
     print(f"Guide agent: {guide}")
 
-    save_env({"ELEVENLABS_AGENT_ID": interviewer, "ELEVENLABS_GUIDE_AGENT_ID": guide})
+    save_env({f"ELEVENLABS_AGENT_ID{args.suffix}": interviewer, f"ELEVENLABS_GUIDE_AGENT_ID{args.suffix}": guide})
     print(f"Saved agent ids to {ROOT_ENV}")
 
 
