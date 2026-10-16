@@ -30,15 +30,15 @@ export default function CameraPanel({ videoRef, canvasRef, ready, error, live, o
   }[live.eyes];
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-white/[0.08] bg-black ${compact ? "aspect-video" : "aspect-[4/3]"}`}>
+    <div className={`relative overflow-hidden rounded-2xl border border-black/[0.07] bg-zinc-200/70 ${compact ? "aspect-video" : "aspect-[4/3]"}`}>
       <video ref={videoRef} muted playsInline className="absolute inset-0 h-full w-full -scale-x-100 object-cover" />
       <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover" />
 
       {(error || !ready) && (
-        <div className="absolute inset-0 grid place-items-center bg-zinc-950/80 text-sm text-zinc-400">
+        <div className="absolute inset-0 grid place-items-center bg-zinc-100/90 text-sm text-zinc-500">
           {error ? (
             <div className="flex max-w-xs flex-col items-center gap-2 px-6 text-center">
-              <VideoOff className="h-6 w-6 text-rose-400" />
+              <VideoOff className="h-6 w-6 text-rose-500" />
               Camera unavailable: {error}
             </div>
           ) : (
@@ -50,7 +50,7 @@ export default function CameraPanel({ videoRef, canvasRef, ready, error, live, o
       )}
 
       {ready && !error && (
-        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 bg-gradient-to-t from-black/80 to-transparent p-3">
+        <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center gap-2 border-t border-white/40 bg-white/70 p-3 backdrop-blur-md">
           {live.calibrating ? (
             <Pill tone="accent">
               <ScanFace className="h-3.5 w-3.5" /> Calibrating posture — sit up straight
@@ -67,7 +67,7 @@ export default function CameraPanel({ videoRef, canvasRef, ready, error, live, o
           {onRecalibrate && !compact && (
             <button
               onClick={onRecalibrate}
-              className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-xs text-zinc-200 hover:bg-white/20"
+              className="ml-auto inline-flex items-center gap-1 rounded-full border border-black/[0.08] bg-white/80 px-2.5 py-1 text-xs text-zinc-700 hover:bg-white"
             >
               <RotateCcw className="h-3 w-3" /> Recalibrate
             </button>

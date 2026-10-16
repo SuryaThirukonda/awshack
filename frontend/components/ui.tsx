@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <section
-      className={`rounded-2xl border border-white/[0.08] bg-white/[0.025] shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset,0_20px_40px_-20px_rgba(0,0,0,0.6)] backdrop-blur ${className}`}
+      className={`rounded-2xl border border-black/[0.07] bg-white/70 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_10px_30px_-14px_rgba(16,24,40,0.12)] backdrop-blur ${className}`}
     >
       {children}
     </section>
@@ -12,9 +12,9 @@ export function Card({ children, className = "" }: { children: ReactNode; classN
 
 export function CardHeader({ icon, title, right }: { icon?: ReactNode; title: string; right?: ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] px-4 py-3">
-      <div className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-        {icon && <span className="text-zinc-400">{icon}</span>}
+    <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-4 py-3">
+      <div className="flex items-center gap-2 text-sm font-medium text-zinc-800">
+        {icon && <span className="text-zinc-500">{icon}</span>}
         {title}
       </div>
       {right}
@@ -23,11 +23,11 @@ export function CardHeader({ icon, title, right }: { icon?: ReactNode; title: st
 }
 
 const pillTones = {
-  good: "border-emerald-400/30 bg-emerald-400/10 text-emerald-300",
-  warn: "border-amber-400/30 bg-amber-400/10 text-amber-300",
-  bad: "border-rose-400/30 bg-rose-400/10 text-rose-300",
-  neutral: "border-white/10 bg-white/5 text-zinc-300",
-  accent: "border-indigo-400/30 bg-indigo-400/10 text-indigo-300",
+  good: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
+  warn: "border-amber-500/25 bg-amber-500/10 text-amber-700",
+  bad: "border-rose-500/20 bg-rose-500/10 text-rose-700",
+  neutral: "border-black/[0.08] bg-white/60 text-zinc-600",
+  accent: "border-indigo-500/20 bg-indigo-500/10 text-indigo-700",
 };
 
 export function Pill({ tone = "neutral", children }: { tone?: keyof typeof pillTones; children: ReactNode }) {
@@ -39,10 +39,9 @@ export function Pill({ tone = "neutral", children }: { tone?: keyof typeof pillT
 }
 
 const btnTones = {
-  primary:
-    "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-400 disabled:bg-indigo-500/40 disabled:shadow-none",
-  danger: "bg-rose-500/90 text-white hover:bg-rose-500 disabled:opacity-40",
-  ghost: "border border-white/10 bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08] disabled:opacity-40",
+  primary: "bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 hover:bg-indigo-500 disabled:bg-indigo-600/40 disabled:shadow-none",
+  danger: "bg-rose-600 text-white shadow-sm shadow-rose-600/20 hover:bg-rose-500 disabled:opacity-40",
+  ghost: "border border-black/[0.08] bg-white/70 text-zinc-800 backdrop-blur hover:bg-white disabled:opacity-40",
 };
 
 export function Button({
@@ -63,6 +62,6 @@ export function scoreTone(v: number | null | undefined): "good" | "warn" | "bad"
   return v >= 75 ? "good" : v >= 50 ? "warn" : "bad";
 }
 
-export const toneColor = { good: "#34d399", warn: "#fbbf24", bad: "#fb7185", neutral: "#71717a" };
+export const toneColor = { good: "#10b981", warn: "#f59e0b", bad: "#f43f5e", neutral: "#a1a1aa" };
 
 export const difficultyTone = (d: string) => (d === "Easy" ? "good" : d === "Medium" ? "warn" : "bad");

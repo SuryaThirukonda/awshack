@@ -44,7 +44,11 @@ function Guide() {
       if (pendingAsk.current) {
         const text = pendingAsk.current;
         pendingAsk.current = null;
-        setTimeout(() => conversation.sendUserMessage(text), 600);
+        setTimeout(() => {
+          try {
+            conversation.sendUserMessage(text);
+          } catch {}
+        }, 600);
       }
     },
     onDisconnect: () => setConnecting(false),
@@ -65,7 +69,9 @@ function Guide() {
           return "Not on an interview page. Navigate to interview, coding, or sql first, then call start_interview.";
         }
         setTimeout(() => {
-          conversation.endSession();
+          try {
+            conversation.endSession();
+          } catch {}
           emit({ type: "start-interview" });
         }, 2500);
         return "Starting now. Say one short line handing over to the interviewer Alex; you will disconnect in 2 seconds.";
@@ -130,11 +136,18 @@ function Guide() {
   }
 
   useCommand((cmd) => {
-    if (cmd.type === "interview-starting" && conversation.status !== "disconnected") conversation.endSession();
+    if (cmd.type === "interview-starting" && conversation.status !== "disconnected") {
+      try {
+        conversation.endSession();
+      } catch {}
+    }
     if (cmd.type === "interview-phase") setHidden(cmd.phase !== "idle");
     if (cmd.type === "guide-ask") {
-      if (live) conversation.sendUserMessage(cmd.text);
-      else start(cmd.text);
+      if (live) {
+        try {
+          conversation.sendUserMessage(cmd.text);
+        } catch {}
+      } else if (!connecting) start(cmd.text);
       return true;
     }
   });
@@ -156,33 +169,33 @@ function Guide() {
   if (!live && !connecting) {
     return (
       <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2">
-        {error && <div className="max-w-xs rounded-xl border border-rose-400/30 bg-rose-950/80 px-3 py-2 text-xs text-rose-200">{error}</div>}
+        {error && <div className="max-w-xs rounded-xl border border-rose-500/25 bg-rose-50/90 px-3 py-2 text-xs text-rose-700">{error}</div>}
         <button
           onClick={() => start()}
-          className="group flex items-center gap-2.5 rounded-full border border-white/10 bg-zinc-900/90 py-2 pl-2 pr-4 text-sm text-zinc-100 shadow-2xl shadow-black/50 backdrop-blur transition hover:border-indigo-400/40 hover:bg-zinc-800/90"
+          className="group flex items-center gap-2.5 rounded-full border border-black/[0.08] bg-white/80 py-2 pl-2 pr-4 text-sm text-zinc-900 shadow-2xl shadow-zinc-900/10 backdrop-blur transition hover:border-indigo-500/30 hover:bg-white"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-sky-400 shadow-lg shadow-indigo-500/40 transition group-hover:scale-105">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-indigo-600 shadow-sm shadow-indigo-600/30 transition group-hover:scale-105">
             <Mic className="h-4 w-4 text-white" />
           </span>
           Ask Poise
-          <kbd className="rounded-md border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400">/</kbd>
+          <kbd className="rounded-md border border-black/[0.08] bg-black/[0.04] px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">/</kbd>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 w-[340px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 shadow-2xl shadow-black/60 backdrop-blur-xl">
-      <div className="flex items-center gap-3 border-b border-white/[0.06] px-4 py-3">
+    <div className="fixed bottom-5 right-5 z-40 w-[340px] max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border border-black/[0.08] bg-white/85 shadow-2xl shadow-zinc-900/10 backdrop-blur-xl">
+      <div className="flex items-center gap-3 border-b border-black/[0.06] px-4 py-3">
         <span className="relative grid h-9 w-9 place-items-center">
           {conversation.isSpeaking && <span className="orb-ring absolute inset-0 rounded-full bg-indigo-500/50" />}
-          <span className="relative grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-sky-400">
+          <span className="relative grid h-9 w-9 place-items-center rounded-full bg-indigo-600">
             {connecting ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : conversation.isSpeaking ? <AudioLines className="h-4 w-4 text-white" /> : <Sparkles className="h-4 w-4 text-white" />}
           </span>
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-white">Poise guide</div>
-          <div className="text-xs text-zinc-400">{connecting ? "Connecting…" : conversation.isSpeaking ? "Speaking" : "Listening — try “start a SQL interview”"}</div>
+          <div className="text-sm font-medium text-zinc-900">Poise guide</div>
+          <div className="text-xs text-zinc-500">{connecting ? "Connecting…" : conversation.isSpeaking ? "Speaking" : "Listening — try “start a SQL interview”"}</div>
         </div>
         <button onClick={() => conversation.endSession()} className="grid h-8 w-8 place-items-center rounded-full bg-rose-500/90 text-white hover:bg-rose-500" title="End">
           <PhoneOff className="h-4 w-4" />
@@ -193,7 +206,7 @@ function Guide() {
           <p className="text-zinc-500">Say things like “review Two Sum with me”, “open SQL practice”, or “explain my report”.</p>
         ) : (
           lines.map((l, i) => (
-            <p key={i} className={l.role === "user" ? "text-indigo-200" : "text-zinc-200"}>
+            <p key={i} className={l.role === "user" ? "text-indigo-700" : "text-zinc-800"}>
               <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{l.role === "user" ? "You" : "Poise"}</span>
               {l.text}
             </p>

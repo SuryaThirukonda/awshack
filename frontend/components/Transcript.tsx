@@ -20,11 +20,11 @@ export default function Transcript({ lines, empty = "The conversation will appea
           <div
             className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${
               l.role === "user"
-                ? "rounded-br-md bg-indigo-500/90 text-white"
-                : "rounded-bl-md border border-white/[0.06] bg-white/[0.05] text-zinc-200"
+                ? "rounded-br-md bg-indigo-600 text-white shadow-sm"
+                : "rounded-bl-md border border-black/[0.06] bg-white/80 text-zinc-800 shadow-sm"
             }`}
           >
-            <div className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wider ${l.role === "user" ? "text-indigo-200" : "text-zinc-500"}`}>
+            <div className={`mb-0.5 text-[10px] font-semibold uppercase tracking-wider ${l.role === "user" ? "text-indigo-100" : "text-zinc-500"}`}>
               {l.role === "user" ? "You" : "Alex"}
             </div>
             {l.text}

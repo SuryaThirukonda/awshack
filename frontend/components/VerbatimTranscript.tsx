@@ -18,16 +18,16 @@ export default function VerbatimTranscript({ items }: { items: VerbatimItem[] })
       {turns.map((t, i) => (
         <div key={i} className="flex gap-3">
           <span className="mt-0.5 shrink-0 font-mono text-[11px] text-zinc-500">{fmt(t.start)}</span>
-          <p className="text-[15px] leading-8 text-zinc-200">
+          <p className="text-[15px] leading-8 text-zinc-800">
             {t.items.map((it, j) => (
               <Fragment key={j}>
                 {it.type === "word" && (
                   <span
                     className={
                       it.stutter
-                        ? "rounded bg-rose-500/20 px-1 text-rose-200 underline decoration-rose-400/60 decoration-wavy underline-offset-4"
+                        ? "rounded bg-rose-500/15 px-1 text-rose-700 underline decoration-rose-400/60 decoration-wavy underline-offset-4"
                         : it.filler
-                          ? "rounded bg-amber-400/15 px-1 text-amber-200"
+                          ? "rounded bg-amber-400/25 px-1 text-amber-800"
                           : ""
                     }
                     title={it.stutter ? "Stutter / repetition" : it.filler ? "Filler word" : undefined}
@@ -38,14 +38,14 @@ export default function VerbatimTranscript({ items }: { items: VerbatimItem[] })
                 {it.type === "pause" && (
                   <span
                     className={`mx-0.5 inline-flex items-center gap-0.5 rounded-full border px-1.5 align-middle font-mono text-[10px] leading-4 ${
-                      it.long ? "border-rose-400/40 bg-rose-500/10 text-rose-300" : "border-white/10 bg-white/5 text-zinc-400"
+                      it.long ? "border-rose-500/30 bg-rose-500/10 text-rose-600" : "border-black/[0.08] bg-black/[0.04] text-zinc-500"
                     }`}
                     title={it.long ? "Long hesitation" : "Pause"}
                   >
                     <Pause className="mr-0.5 h-2.5 w-2.5" /> {it.duration}s
                   </span>
                 )}
-                {it.type === "event" && <span className="mx-0.5 font-mono text-xs italic text-sky-300">({it.text})</span>}{" "}
+                {it.type === "event" && <span className="mx-0.5 font-mono text-xs italic text-sky-600">({it.text})</span>}{" "}
               </Fragment>
             ))}
           </p>

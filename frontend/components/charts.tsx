@@ -10,7 +10,7 @@ export function ScoreRing({ value, label, size = 96, stroke = 8 }: { value: numb
     <div className="flex flex-col items-center gap-2">
       <div className="relative" style={{ width: size, height: size }}>
         <svg width={size} height={size} className="-rotate-90">
-          <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} fill="none" />
+          <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(15,23,42,0.07)" strokeWidth={stroke} fill="none" />
           {v !== null && (
             <circle
               cx={size / 2}
@@ -22,17 +22,17 @@ export function ScoreRing({ value, label, size = 96, stroke = 8 }: { value: numb
               strokeLinecap="round"
               strokeDasharray={c}
               strokeDashoffset={c * (1 - v / 100)}
-              style={{ transition: "stroke-dashoffset 1s ease", filter: `drop-shadow(0 0 6px ${color}66)` }}
+              style={{ transition: "stroke-dashoffset 1s ease" }}
             />
           )}
         </svg>
         <div className="absolute inset-0 grid place-items-center">
-          <span className="font-semibold tabular-nums text-white" style={{ fontSize: size * 0.28 }}>
+          <span className="font-semibold tabular-nums text-zinc-900" style={{ fontSize: size * 0.28 }}>
             {v ?? "—"}
           </span>
         </div>
       </div>
-      {label && <span className="text-xs font-medium uppercase tracking-wider text-zinc-400">{label}</span>}
+      {label && <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">{label}</span>}
     </div>
   );
 }
@@ -60,13 +60,13 @@ export function MetricBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-sm text-zinc-300">{label}</span>
-        <span className="font-mono text-sm tabular-nums text-white">{display}</span>
+        <span className="text-sm text-zinc-700">{label}</span>
+        <span className="font-mono text-sm tabular-nums text-zinc-900">{display}</span>
       </div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-white/[0.06]">
+      <div className="relative h-2 overflow-hidden rounded-full bg-black/[0.06]">
         {ideal && (
           <div
-            className="absolute inset-y-0 bg-emerald-400/15"
+            className="absolute inset-y-0 bg-emerald-500/15"
             style={{ left: pct(ideal[0]), width: `calc(${pct(ideal[1])} - ${pct(ideal[0])})` }}
           />
         )}
@@ -78,7 +78,7 @@ export function MetricBar({
 }
 
 export function PostureTimeline({ timeline }: { timeline: PresenceSummary["timeline"] }) {
-  const colors = { good: "bg-emerald-400/80", warn: "bg-amber-400/80", bad: "bg-rose-400/80", none: "bg-zinc-700" };
+  const colors = { good: "bg-emerald-400/80", warn: "bg-amber-400/80", bad: "bg-rose-400/80", none: "bg-zinc-300" };
   if (!timeline.length) return <p className="text-sm text-zinc-500">No posture data recorded.</p>;
   return (
     <div>
@@ -93,7 +93,7 @@ export function PostureTimeline({ timeline }: { timeline: PresenceSummary["timel
           <Legend c="bg-emerald-400/80" l="Good" />
           <Legend c="bg-amber-400/80" l="One issue" />
           <Legend c="bg-rose-400/80" l="Slouch + looking away" />
-          <Legend c="bg-zinc-700" l="Not visible" />
+          <Legend c="bg-zinc-300" l="Not visible" />
         </div>
         <span>End</span>
       </div>

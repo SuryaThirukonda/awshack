@@ -31,10 +31,16 @@ export default function TechnicalPage() {
 
 const defineTheme: BeforeMount = (monaco) => {
   monaco.editor.defineTheme("poise", {
-    base: "vs-dark",
+    base: "vs",
     inherit: true,
     rules: [],
-    colors: { "editor.background": "#0b0d13", "editor.lineHighlightBackground": "#ffffff08", "editorGutter.background": "#0b0d13" },
+    colors: {
+      "editor.background": "#fcfcfd",
+      "editor.lineHighlightBackground": "#6366f10a",
+      "editor.lineHighlightBorder": "#00000000",
+      "editorGutter.background": "#fcfcfd",
+      "editorLineNumber.foreground": "#a1a1aa",
+    },
   });
 };
 
@@ -66,34 +72,35 @@ function TechnicalSession() {
   const setRun = (result: RunResult) => problem && setRunState({ id: problem.id, result });
 
   const session = useInterviewSession({ mode: kind, role, startTracking: posture.startTracking, stopTracking: posture.stopTracking });
-  const { phase, conversation } = session;
+  const { phase, conversation, send } = session;
   const live = phase === "live";
   const active = live || phase === "connecting";
+  const label = kind === "sql" ? "SQL QUERY" : "PYTHON CODE";
 
-  // Live code → interviewer (silent context), debounced.
+  // Live code → interviewer (silent context), debounced. `send` is stable, so re-renders don't reset the timer.
   useEffect(() => {
-    if (!live || !problem) return;
-    const id = setTimeout(() => {
-      conversation.sendContextualUpdate(`CANDIDATE ${kind === "sql" ? "SQL QUERY" : "PYTHON CODE"} (live snapshot):\n${code}`);
-    }, CODE_SYNC_DEBOUNCE_MS);
+    if (!live || !problem?.id) return;
+    const id = setTimeout(() => send.contextual(`CANDIDATE ${label} (live snapshot):\n${code}`), CODE_SYNC_DEBOUNCE_MS);
     return () => clearTimeout(id);
-  }, [code, live, kind, problem, conversation]);
+  }, [code, live, label, problem?.id, send]);
 
   const checkIn = useCallback(() => {
-    conversation.sendContextualUpdate(`CANDIDATE ${kind === "sql" ? "SQL QUERY" : "PYTHON CODE"} (live snapshot):\n${code}`);
-    conversation.sendUserMessage("[interviewer cue] Ask me to explain what I'm doing right now.");
-  }, [conversation, code, kind]);
+    send.contextual(`CANDIDATE ${label} (live snapshot):\n${code}`);
+    send.userMessage("[interviewer cue] Ask me to explain what I'm doing right now.");
+  }, [send, code, label]);
 
-  // Periodic "what's going on now?" check-ins.
+  // Periodic "what's going on now?" check-ins (skipped while the interviewer is talking).
   const checkInRef = useRef(checkIn);
   useEffect(() => {
     checkInRef.current = checkIn;
   }, [checkIn]);
   useEffect(() => {
     if (!live) return;
-    const id = setInterval(() => !conversation.isSpeaking && checkInRef.current(), CHECK_IN_EVERY_MS);
+    const id = setInterval(() => {
+      if (!send.isAgentSpeaking()) checkInRef.current();
+    }, CHECK_IN_EVERY_MS);
     return () => clearInterval(id);
-  }, [live, conversation]);
+  }, [live, send]);
 
   async function runTests() {
     if (!problem) return;
@@ -101,11 +108,7 @@ function TechnicalSession() {
     try {
       const r = await runCode(problem.id, code);
       setRun(r);
-      if (live) {
-        conversation.sendContextualUpdate(
-          `TEST RESULTS: ${r.passed}/${r.total} passed.${r.error ? ` Error: ${r.error.slice(0, 400)}` : ""}`,
-        );
-      }
+      send.contextual(`TEST RESULTS: ${r.passed}/${r.total} passed.${r.error ? ` Error: ${r.error.slice(0, 400)}` : ""}`);
     } catch (e) {
       setRun({ error: e instanceof Error ? e.message : String(e), results: [], passed: 0, total: problem.test_count });
     } finally {
@@ -141,20 +144,20 @@ function TechnicalSession() {
   return (
     <div className="flex flex-1 flex-col gap-5 pt-6">
       <SessionHeader
-        icon={kind === "sql" ? <Database className="h-5 w-5 text-emerald-300" /> : <Code2 className="h-5 w-5 text-sky-300" />}
+        icon={kind === "sql" ? <Database className="h-5 w-5 text-emerald-600" /> : <Code2 className="h-5 w-5 text-sky-600" />}
         title="Technical interview"
         subtitle={`${kind === "sql" ? "SQL" : "Coding"} · ${role}`}
         seconds={session.seconds}
         phase={phase}
       >
-        <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
+        <div className="flex rounded-xl border border-black/[0.08] bg-black/[0.03] p-1">
           {(["coding", "sql"] as const).map((k) => (
             <button
               key={k}
               disabled={active}
               onClick={() => router.replace(`/technical?kind=${k}`)}
               className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition disabled:cursor-not-allowed ${
-                kind === k ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"
+                kind === k ? "bg-black/[0.06] text-zinc-900" : "text-zinc-500 hover:text-zinc-900"
               }`}
             >
               {k === "sql" ? <Database className="h-4 w-4" /> : <Code2 className="h-4 w-4" />}
@@ -193,14 +196,14 @@ function TechnicalSession() {
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-8">
           {/* Problem picker + statement */}
           <Card>
-            <div className="flex gap-2 overflow-x-auto border-b border-white/[0.06] p-2">
+            <div className="flex gap-2 overflow-x-auto border-b border-black/[0.06] p-2">
               {problems.map((p) => (
                 <button
                   key={p.id}
                   disabled={active}
                   onClick={() => setSelectedId(p.id)}
                   className={`flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition disabled:cursor-not-allowed ${
-                    problem?.id === p.id ? "bg-white/10 text-white" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                    problem?.id === p.id ? "bg-black/[0.06] text-zinc-900" : "text-zinc-500 hover:bg-black/[0.04] hover:text-zinc-900"
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${p.difficulty === "Easy" ? "bg-emerald-400" : p.difficulty === "Medium" ? "bg-amber-400" : "bg-rose-400"}`} />
@@ -216,19 +219,19 @@ function TechnicalSession() {
             {problem && (
               <div className="space-y-3 p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h2 className="mr-1 text-base font-semibold text-white">{problem.title}</h2>
+                  <h2 className="mr-1 text-base font-semibold text-zinc-900">{problem.title}</h2>
                   <Pill tone={difficultyTone(problem.difficulty)}>{problem.difficulty}</Pill>
                   {problem.tags.map((t) => (
                     <Pill key={t}>{t}</Pill>
                   ))}
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-300">{problem.prompt}</p>
+                <p className="text-sm leading-relaxed text-zinc-700">{problem.prompt}</p>
                 {problem.tables && (
-                  <pre className="overflow-x-auto rounded-xl border border-white/[0.06] bg-black/30 p-3 font-mono text-xs text-emerald-200/90">{problem.tables.join("\n")}</pre>
+                  <pre className="overflow-x-auto rounded-xl border border-black/[0.06] bg-black/[0.03] p-3 font-mono text-xs text-emerald-800">{problem.tables.join("\n")}</pre>
                 )}
                 <div className="flex flex-wrap gap-2">
                   {problem.examples.map((ex) => (
-                    <code key={ex} className="rounded-lg bg-white/[0.05] px-2.5 py-1 font-mono text-xs text-zinc-300">
+                    <code key={ex} className="rounded-lg bg-black/[0.04] px-2.5 py-1 font-mono text-xs text-zinc-700">
                       {ex}
                     </code>
                   ))}
@@ -246,7 +249,7 @@ function TechnicalSession() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => problem && setCodeById((m) => ({ ...m, [problem.id]: problem.starter }))}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-black/[0.04] hover:text-zinc-900"
                   >
                     <RotateCcw className="h-3.5 w-3.5" /> Reset
                   </button>
@@ -266,7 +269,7 @@ function TechnicalSession() {
               onChange={(v) => {
                 if (!problem) return;
                 setCodeById((m) => ({ ...m, [problem.id]: v ?? "" }));
-                if (live) conversation.sendUserActivity();
+                send.activity();
               }}
               options={{
                 minimap: { enabled: false },
@@ -319,11 +322,11 @@ function Results({ run, kind }: { run: RunResult; kind: Kind }) {
         right={<Pill tone={allPassed ? "good" : "bad"}>{run.passed}/{run.total} passed</Pill>}
       />
       <div className="space-y-2 p-4">
-        {run.error && <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-rose-500/10 p-3 font-mono text-xs text-rose-200">{run.error}</pre>}
+        {run.error && <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-rose-500/10 p-3 font-mono text-xs text-rose-700">{run.error}</pre>}
         {kind === "sql" && run.columns && run.rows && (
-          <div className="overflow-x-auto rounded-xl border border-white/[0.06]">
+          <div className="overflow-x-auto rounded-xl border border-black/[0.06]">
             <table className="w-full text-left font-mono text-xs">
-              <thead className="bg-white/[0.04] text-zinc-400">
+              <thead className="bg-white/70 text-zinc-500">
                 <tr>
                   {run.columns.map((c) => (
                     <th key={c} className="px-3 py-2 font-medium">{c}</th>
@@ -332,7 +335,7 @@ function Results({ run, kind }: { run: RunResult; kind: Kind }) {
               </thead>
               <tbody>
                 {run.rows.map((r, i) => (
-                  <tr key={i} className="border-t border-white/[0.04] text-zinc-200">
+                  <tr key={i} className="border-t border-black/[0.05] text-zinc-800">
                     {r.map((v, j) => (
                       <td key={j} className="px-3 py-1.5">{v === null ? <span className="text-zinc-500">NULL</span> : String(v)}</td>
                     ))}
@@ -345,12 +348,12 @@ function Results({ run, kind }: { run: RunResult; kind: Kind }) {
         )}
         {kind === "coding" &&
           run.results.map((r, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2 font-mono text-xs">
-              {r.passed ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />}
-              <div className="min-w-0 space-y-0.5 text-zinc-300">
+            <div key={i} className="flex items-start gap-3 rounded-xl border border-black/[0.06] bg-white/60 px-3 py-2 font-mono text-xs">
+              {r.passed ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />}
+              <div className="min-w-0 space-y-0.5 text-zinc-700">
                 <div className="truncate"><span className="text-zinc-500">input </span>{JSON.stringify(r.input)}</div>
                 <div><span className="text-zinc-500">expected </span>{JSON.stringify(r.expected)}</div>
-                {!r.passed && <div className="text-rose-300"><span className="text-zinc-500">got </span>{typeof r.got === "string" ? r.got : JSON.stringify(r.got)}</div>}
+                {!r.passed && <div className="text-rose-600"><span className="text-zinc-500">got </span>{typeof r.got === "string" ? r.got : JSON.stringify(r.got)}</div>}
               </div>
             </div>
           ))}

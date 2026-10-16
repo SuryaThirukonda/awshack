@@ -47,12 +47,12 @@ export default function ReportPage() {
     } catch {}
   };
   const history = sessions.length > 0 && (
-    <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-zinc-300">
+    <label className="flex items-center gap-2 rounded-xl border border-black/[0.08] bg-white/70 px-3 py-1.5 text-sm text-zinc-700">
       <History className="h-4 w-4 text-zinc-500" />
       <select
         value={report?.sessionId ?? ""}
         onChange={(e) => openSession(e.target.value)}
-        className="bg-transparent text-sm text-zinc-200 outline-none [&>option]:bg-zinc-900"
+        className="bg-transparent text-sm text-zinc-800 outline-none [&>option]:bg-white"
       >
         {!report?.sessionId && <option value="">Choose a past session…</option>}
         {sessions.map((s) => (
@@ -71,8 +71,8 @@ export default function ReportPage() {
         <Card className="flex max-w-sm flex-col items-center gap-4 p-8 text-center">
           <BarChart3 className="h-8 w-8 text-zinc-500" />
           <div>
-            <div className="font-medium text-white">No report yet</div>
-            <p className="mt-1 text-sm text-zinc-400">Finish a mock interview and your feedback will show up here.</p>
+            <div className="font-medium text-zinc-900">No report yet</div>
+            <p className="mt-1 text-sm text-zinc-500">Finish a mock interview and your feedback will show up here.</p>
           </div>
           <Link href="/">
             <Button>Choose an interview</Button>
@@ -95,12 +95,11 @@ export default function ReportPage() {
   return (
     <div className="flex flex-col gap-5 pt-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-lg font-semibold text-white">Interview report</h1>
+        <h1 className="text-lg font-semibold text-zinc-900">Interview report</h1>
         {history}
       </div>
       {/* Hero */}
       <Card className="relative overflow-hidden p-6 sm:p-8">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
         <div className="relative flex flex-col gap-6 md:flex-row md:items-center">
           <ScoreRing value={fb.overall} size={148} stroke={11} />
           <div className="flex-1 space-y-3">
@@ -110,8 +109,8 @@ export default function ReportPage() {
               <Pill>{fmtTime(report.durationS)}</Pill>
               {report.problem && <Pill>{report.problem.title}</Pill>}
             </div>
-            <h2 className="text-2xl font-semibold text-white">Overall score</h2>
-            <p className="max-w-2xl text-sm leading-relaxed text-zinc-300">{fb.summary}</p>
+            <h2 className="text-2xl font-semibold text-zinc-900">Overall score</h2>
+            <p className="max-w-2xl text-sm leading-relaxed text-zinc-700">{fb.summary}</p>
             <div className="flex flex-wrap gap-2 pt-1">
               <Link href={RETRY_HREF[report.mode]}>
                 <Button>
@@ -125,9 +124,9 @@ export default function ReportPage() {
           </div>
         </div>
         {fb.source === "metrics" && (
-          <div className="relative mt-6 flex items-start gap-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-200">
+          <div className="relative mt-6 flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-xs text-amber-800">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            AI feedback (Bedrock) was unavailable, so this report shows measured metrics only. {fb.fallback_reason && <span className="text-amber-200/60">({fb.fallback_reason})</span>}
+            AI feedback (Bedrock) was unavailable, so this report shows measured metrics only. {fb.fallback_reason && <span className="text-amber-700/70">({fb.fallback_reason})</span>}
           </div>
         )}
       </Card>
@@ -192,8 +191,8 @@ export default function ReportPage() {
           <ul className="space-y-2 p-5">
             {fb.strengths?.length ? (
               fb.strengths.map((s, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-zinc-200">
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" /> {s}
+                <li key={i} className="flex gap-2.5 text-sm text-zinc-800">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" /> {s}
                 </li>
               ))
             ) : (
@@ -206,8 +205,8 @@ export default function ReportPage() {
           <ul className="space-y-2 p-5">
             {fb.improvements?.length ? (
               fb.improvements.map((s, i) => (
-                <li key={i} className="flex gap-2.5 text-sm text-zinc-200">
-                  <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-amber-400/20 font-mono text-[10px] text-amber-300">{i + 1}</span>
+                <li key={i} className="flex gap-2.5 text-sm text-zinc-800">
+                  <span className="mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full bg-amber-500/15 font-mono text-[10px] text-amber-600">{i + 1}</span>
                   {s}
                 </li>
               ))
@@ -225,7 +224,7 @@ export default function ReportPage() {
           icon={<AudioLines className="h-4 w-4" />}
           right={
             report.sessionId && voice?.verbatim?.length ? (
-              <a href={sessionTranscriptUrl(report.sessionId)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-400 hover:bg-white/5 hover:text-zinc-200">
+              <a href={sessionTranscriptUrl(report.sessionId)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-zinc-500 hover:bg-black/[0.04] hover:text-zinc-900">
                 <Download className="h-3.5 w-3.5" /> transcript.txt
               </a>
             ) : null
@@ -233,13 +232,13 @@ export default function ReportPage() {
         />
         <div className="space-y-4 p-5">
           {report.sessionId && (
-              <audio controls src={sessionAudioUrl(report.sessionId)} className="h-10 w-full rounded-lg [color-scheme:dark]" />
+              <audio controls src={sessionAudioUrl(report.sessionId)} className="h-10 w-full rounded-lg " />
           )}
           <div className="flex flex-wrap gap-2 text-[11px]">
-            <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-amber-200">filler</span>
-            <span className="rounded bg-rose-500/20 px-1.5 py-0.5 text-rose-200 underline decoration-wavy">stutter</span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-zinc-400">pause</span>
-            <span className="rounded-full border border-rose-400/40 bg-rose-500/10 px-1.5 py-0.5 font-mono text-rose-300">long pause</span>
+            <span className="rounded bg-amber-400/25 px-1.5 py-0.5 text-amber-800">filler</span>
+            <span className="rounded bg-rose-500/15 px-1.5 py-0.5 text-rose-700 underline decoration-wavy">stutter</span>
+            <span className="rounded-full border border-black/[0.08] bg-black/[0.04] px-1.5 py-0.5 font-mono text-zinc-500">pause</span>
+            <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 font-mono text-rose-600">long pause</span>
           </div>
           {voice?.verbatim ? (
             <VerbatimTranscript items={voice.verbatim} />
@@ -248,7 +247,7 @@ export default function ReportPage() {
           )}
           {report.sessionId && (
             <p className="flex items-center gap-1.5 text-xs text-zinc-500">
-              <FolderOpen className="h-3.5 w-3.5" /> Saved locally to <code className="font-mono text-zinc-400">backend/data/sessions/{report.sessionId}/</code>
+              <FolderOpen className="h-3.5 w-3.5" /> Saved locally to <code className="font-mono text-zinc-500">backend/data/sessions/{report.sessionId}/</code>
             </p>
           )}
         </div>
@@ -261,18 +260,18 @@ export default function ReportPage() {
             icon={<Code2 className="h-4 w-4" />}
             right={report.tests ? <Pill tone={report.tests.passed === report.tests.total && !report.tests.error ? "good" : "bad"}>{report.tests.passed}/{report.tests.total} tests passed</Pill> : <Pill>Tests not run</Pill>}
           />
-          <pre className="scrollbar-thin max-h-80 overflow-auto p-5 font-mono text-xs leading-relaxed text-zinc-200">{report.code}</pre>
+          <pre className="scrollbar-thin max-h-80 overflow-auto p-5 font-mono text-xs leading-relaxed text-zinc-800">{report.code}</pre>
         </Card>
       )}
 
       {fb.per_question?.length > 0 && (
         <Card>
           <CardHeader title="Question-by-question" icon={<MessageSquareQuote className="h-4 w-4" />} />
-          <div className="divide-y divide-white/[0.05]">
+          <div className="divide-y divide-black/[0.05]">
             {fb.per_question.map((q, i) => (
               <div key={i} className="p-5">
-                <div className="text-sm font-medium text-white">{q.question}</div>
-                <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">{q.feedback}</p>
+                <div className="text-sm font-medium text-zinc-900">{q.question}</div>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{q.feedback}</p>
               </div>
             ))}
           </div>
@@ -280,14 +279,14 @@ export default function ReportPage() {
       )}
 
       <Card>
-        <button onClick={() => setShowTranscript((s) => !s)} className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-200">
+        <button onClick={() => setShowTranscript((s) => !s)} className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-zinc-800">
           <span className="flex items-center gap-2">
-            <MessageSquareQuote className="h-4 w-4 text-zinc-400" /> Conversation with the interviewer ({report.transcript.length} turns)
+            <MessageSquareQuote className="h-4 w-4 text-zinc-500" /> Conversation with the interviewer ({report.transcript.length} turns)
           </span>
-          <ChevronDown className={`h-4 w-4 text-zinc-400 transition ${showTranscript ? "rotate-180" : ""}`} />
+          <ChevronDown className={`h-4 w-4 text-zinc-500 transition ${showTranscript ? "rotate-180" : ""}`} />
         </button>
         {showTranscript && (
-          <div className="border-t border-white/[0.06]">
+          <div className="border-t border-black/[0.06]">
             <Transcript lines={report.transcript} />
           </div>
         )}
@@ -298,12 +297,12 @@ export default function ReportPage() {
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
-      <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+    <div className="rounded-xl border border-black/[0.06] bg-white/60 p-3">
+      <div className="flex items-center gap-1.5 text-xs text-zinc-500">
         {icon}
         {label}
       </div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-white">{value}</div>
+      <div className="mt-1 text-xl font-semibold tabular-nums text-zinc-900">{value}</div>
     </div>
   );
 }

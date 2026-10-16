@@ -56,20 +56,20 @@ function Practice() {
     <div className="flex flex-1 flex-col gap-5 pt-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/5">
-            <BookOpen className="h-5 w-5 text-amber-300" />
+          <span className="grid h-11 w-11 place-items-center rounded-xl border border-black/[0.08] bg-black/[0.04]">
+            <BookOpen className="h-5 w-5 text-amber-600" />
           </span>
           <div>
-            <h1 className="text-lg font-semibold text-white">Question review</h1>
-            <p className="text-sm text-zinc-400">LeetCode-style and SQL questions — study with hints, or review out loud with Poise.</p>
+            <h1 className="text-lg font-semibold text-zinc-900">Question review</h1>
+            <p className="text-sm text-zinc-500">LeetCode-style and SQL questions — study with hints, or review out loud with Poise.</p>
           </div>
         </div>
-        <div className="flex rounded-xl border border-white/10 bg-white/[0.03] p-1">
+        <div className="flex rounded-xl border border-black/[0.08] bg-black/[0.03] p-1">
           {(["all", "coding", "sql"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-lg px-3 py-1.5 text-sm capitalize transition ${filter === f ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
+              className={`rounded-lg px-3 py-1.5 text-sm capitalize transition ${filter === f ? "bg-black/[0.06] text-zinc-900" : "text-zinc-500 hover:text-zinc-900"}`}
             >
               {f === "sql" ? "SQL" : f}
             </button>
@@ -87,22 +87,22 @@ function Practice() {
               <Loader2 className="h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : (
-            <ul className="divide-y divide-white/[0.04]">
+            <ul className="divide-y divide-black/[0.05]">
               {list.map((p) => (
                 <li key={p.id}>
                   <button
                     onClick={() => setSelectedId(p.id)}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${problem?.id === p.id ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"}`}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition ${problem?.id === p.id ? "bg-indigo-500/[0.07]" : "hover:bg-black/[0.03]"}`}
                   >
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/10 bg-white/5">
-                      {p.kind === "sql" ? <Database className="h-4 w-4 text-emerald-300" /> : <Code2 className="h-4 w-4 text-sky-300" />}
+                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-black/[0.08] bg-black/[0.04]">
+                      {p.kind === "sql" ? <Database className="h-4 w-4 text-emerald-600" /> : <Code2 className="h-4 w-4 text-sky-600" />}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-white">{p.title}</div>
+                      <div className="truncate text-sm font-medium text-zinc-900">{p.title}</div>
                       <div className="truncate text-xs text-zinc-500">{p.tags.join(" · ")}</div>
                     </div>
                     <Pill tone={difficultyTone(p.difficulty)}>{p.difficulty}</Pill>
-                    <ChevronRight className="h-4 w-4 text-zinc-600" />
+                    <ChevronRight className="h-4 w-4 text-zinc-400" />
                   </button>
                 </li>
               ))}
@@ -116,7 +116,7 @@ function Practice() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-xl font-semibold text-white">{problem.title}</h2>
+                    <h2 className="text-xl font-semibold text-zinc-900">{problem.title}</h2>
                     <Pill tone={difficultyTone(problem.difficulty)}>{problem.difficulty}</Pill>
                     <Pill tone="accent">{problem.kind === "sql" ? "SQL" : "Coding"}</Pill>
                   </div>
@@ -137,13 +137,13 @@ function Practice() {
                   </Link>
                 </div>
               </div>
-              <p className="mt-5 text-sm leading-relaxed text-zinc-300">{problem.prompt}</p>
+              <p className="mt-5 text-sm leading-relaxed text-zinc-700">{problem.prompt}</p>
               {problem.tables && (
-                <pre className="mt-4 overflow-x-auto rounded-xl border border-white/[0.06] bg-black/30 p-3 font-mono text-xs text-emerald-200/90">{problem.tables.join("\n")}</pre>
+                <pre className="mt-4 overflow-x-auto rounded-xl border border-black/[0.06] bg-black/[0.03] p-3 font-mono text-xs text-emerald-800">{problem.tables.join("\n")}</pre>
               )}
               <div className="mt-4 space-y-1.5">
                 {problem.examples.map((ex) => (
-                  <code key={ex} className="block rounded-lg bg-white/[0.05] px-3 py-2 font-mono text-xs text-zinc-300">
+                  <code key={ex} className="block rounded-lg bg-black/[0.04] px-3 py-2 font-mono text-xs text-zinc-700">
                     {ex}
                   </code>
                 ))}
@@ -156,7 +156,7 @@ function Practice() {
                 icon={<Lightbulb className="h-4 w-4" />}
                 right={
                   hintsShown < problem.hints.length && (
-                    <button onClick={() => setHintsShown((n) => n + 1)} className="text-xs font-medium text-indigo-300 hover:text-indigo-200">
+                    <button onClick={() => setHintsShown((n) => n + 1)} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
                       Reveal hint {hintsShown + 1} of {problem.hints.length}
                     </button>
                   )
@@ -165,8 +165,8 @@ function Practice() {
               <div className="space-y-2 p-4">
                 {hintsShown === 0 && <p className="text-sm text-zinc-500">Try it first. Reveal hints one at a time when you&apos;re stuck.</p>}
                 {problem.hints.slice(0, hintsShown).map((h, i) => (
-                  <div key={i} className="flex gap-3 rounded-xl border border-amber-400/15 bg-amber-400/[0.05] px-3 py-2.5 text-sm text-amber-100/90">
-                    <span className="font-mono text-xs text-amber-300">{i + 1}</span>
+                  <div key={i} className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-3 py-2.5 text-sm text-amber-900">
+                    <span className="font-mono text-xs text-amber-600">{i + 1}</span>
                     {h}
                   </div>
                 ))}
@@ -179,7 +179,7 @@ function Practice() {
                 icon={<Eye className="h-4 w-4" />}
                 right={
                   !showApproach && (
-                    <button onClick={() => setShowApproach(true)} className="text-xs font-medium text-indigo-300 hover:text-indigo-200">
+                    <button onClick={() => setShowApproach(true)} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">
                       Reveal solution approach
                     </button>
                   )
@@ -188,11 +188,11 @@ function Practice() {
               <div className="p-4">
                 {showApproach ? (
                   <div className="space-y-3">
-                    <p className="text-sm leading-relaxed text-zinc-200">{problem.approach}</p>
+                    <p className="text-sm leading-relaxed text-zinc-800">{problem.approach}</p>
                     <Pill tone="good">{problem.complexity}</Pill>
                   </div>
                 ) : (
-                  <div className="h-16 rounded-xl bg-[repeating-linear-gradient(45deg,rgba(255,255,255,0.03),rgba(255,255,255,0.03)_8px,transparent_8px,transparent_16px)]" />
+                  <div className="grid h-16 place-items-center rounded-xl border border-dashed border-black/[0.08] bg-black/[0.02] text-xs text-zinc-400">Hidden until you reveal it</div>
                 )}
               </div>
             </Card>

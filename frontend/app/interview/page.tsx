@@ -45,7 +45,7 @@ function BehavioralSession() {
   return (
     <div className="flex flex-1 flex-col gap-5 pt-6">
       <SessionHeader
-        icon={<MessagesSquare className="h-5 w-5 text-indigo-300" />}
+        icon={<MessagesSquare className="h-5 w-5 text-indigo-600" />}
         title="Regular interview"
         subtitle={`Behavioral · ${role}`}
         seconds={session.seconds}
@@ -86,7 +86,7 @@ function BehavioralSession() {
             live={posture.live}
             onRecalibrate={posture.recalibrate}
           />
-          <Card className="grid grid-cols-3 divide-x divide-white/[0.06]">
+          <Card className="grid grid-cols-3 divide-x divide-black/[0.06]">
             <Tip title="Sit tall" body="Keep your head stacked over your shoulders." />
             <Tip title="Eyes on the lens" body="Look at the camera, not your own video." />
             <Tip title="Use STAR" body="Situation, Task, Action, Result — end with impact." />
@@ -115,8 +115,8 @@ function BehavioralSession() {
 function Tip({ title, body }: { title: string; body: string }) {
   return (
     <div className="p-4">
-      <div className="text-sm font-medium text-white">{title}</div>
-      <div className="mt-1 text-xs leading-relaxed text-zinc-400">{body}</div>
+      <div className="text-sm font-medium text-zinc-900">{title}</div>
+      <div className="mt-1 text-xs leading-relaxed text-zinc-500">{body}</div>
     </div>
   );
 }

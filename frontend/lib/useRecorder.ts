@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 
 /** Records the candidate's mic for the whole session so it can be sent to ElevenLabs Scribe. */
 export function useRecorder() {
@@ -9,6 +9,7 @@ export function useRecorder() {
   const startedAtRef = useRef(0);
 
   const start = useCallback(async () => {
+    if (recRef.current && recRef.current.state !== "inactive") return;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
@@ -28,9 +29,14 @@ export function useRecorder() {
         if (!rec || rec.state === "inactive") return resolve(null);
         rec.onstop = () => {
           rec.stream.getTracks().forEach((t) => t.stop());
+          recRef.current = null;
           resolve(new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" }));
         };
-        rec.stop();
+        try {
+          rec.stop();
+        } catch {
+          resolve(null);
+        }
       }),
     [],
   );
@@ -41,5 +47,5 @@ export function useRecorder() {
     [],
   );
 
-  return { start, stop, elapsed };
+  return useMemo(() => ({ start, stop, elapsed }), [start, stop, elapsed]);
 }
