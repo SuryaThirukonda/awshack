@@ -5,7 +5,10 @@ import type { TranscriptLine } from "@/lib/api";
 
 export default function Transcript({ lines, empty = "The conversation will appear here." }: { lines: TranscriptLine[]; empty?: string }) {
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), [lines.length]);
+  useEffect(() => {
+    // Block body on purpose: scrollIntoView returns a Promise in newer browsers, and an effect must not return one.
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [lines.length]);
 
   if (!lines.length) {
     return <div className="grid h-full place-items-center p-6 text-center text-sm text-zinc-500">{empty}</div>;

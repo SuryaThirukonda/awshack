@@ -39,6 +39,19 @@ const mode = <T>(xs: T[]): T => {
   return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
 };
 
+// MediaPipe's WASM writes routine INFO lines (e.g. "Created TensorFlow Lite XNNPACK delegate") to console.error,
+// which the Next.js dev overlay reports as errors. Drop just those lines.
+let consoleFilterInstalled = false;
+function silenceMediapipeInfoLogs() {
+  if (consoleFilterInstalled) return;
+  consoleFilterInstalled = true;
+  const original = console.error;
+  console.error = (...args: unknown[]) => {
+    if (typeof args[0] === "string" && /^INFO: |TensorFlow Lite|XNNPACK/.test(args[0])) return;
+    original(...args);
+  };
+}
+
 /** Webcam + MediaPipe pose/face tracking with live posture & eye-contact state. */
 export function usePosture(
   videoRef: RefObject<HTMLVideoElement | null>,
@@ -71,6 +84,7 @@ export function usePosture(
         video.srcObject = stream;
         await video.play();
 
+        silenceMediapipeInfoLogs();
         const { FilesetResolver, PoseLandmarker, FaceLandmarker } = await import("@mediapipe/tasks-vision");
         const fileset = await FilesetResolver.forVisionTasks(WASM);
         const [pose, face] = await Promise.all([
