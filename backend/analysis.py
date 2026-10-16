@@ -8,6 +8,8 @@ import re
 import boto3
 import httpx
 
+from config import eleven_key
+
 ELEVEN_BASE = "https://api.elevenlabs.io"
 
 FILLERS_SINGLE = {"um", "umm", "uh", "uhh", "er", "ah", "hmm", "like", "basically", "actually", "literally"}
@@ -18,7 +20,7 @@ PAUSE_THRESHOLD_S = 2.0
 def scribe_transcribe(audio: bytes, filename: str, content_type: str) -> dict:
     resp = httpx.post(
         f"{ELEVEN_BASE}/v1/speech-to-text",
-        headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
+        headers={"xi-api-key": eleven_key() or ""},
         data={
             "model_id": "scribe_v2",
             "timestamps_granularity": "word",

@@ -42,6 +42,20 @@ aws login        # or aws configure sso
 
 If Bedrock is unavailable, the report still shows the measured voice and posture metrics.
 
+### Switching ElevenLabs accounts
+Set `ELEVENLABS_ACCOUNT=1` or `2` in `.env`. The backend re-reads `.env` on every request, so no restart is needed.
+
+| Account | Variables used |
+| --- | --- |
+| `1` | `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_GUIDE_AGENT_ID` |
+| `2` | `ELEVENLABS_API_KEY2`, `ELEVENLABS_AGENT_ID2`, `ELEVENLABS_GUIDE_AGENT_ID2` |
+
+To create the agents in another account, run:
+
+```bash
+.venv/bin/python create_agent.py --key-var ELEVENLABS_API_KEY2 --suffix 2
+```
+
 ## Architecture
 
 | Piece | Where |

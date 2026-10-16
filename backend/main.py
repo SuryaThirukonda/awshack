@@ -14,6 +14,7 @@ from pydantic import BaseModel
 load_dotenv(Path(__file__).resolve().parent / ".env")
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
+from config import eleven_account, eleven_agent_id, eleven_agent_var, eleven_key  # noqa: E402
 from analysis import ELEVEN_BASE, bedrock_feedback, fallback_feedback, scribe_transcribe, voice_metrics  # noqa: E402
 from problems import PROBLEMS, public_problem  # noqa: E402
 from runner import run_code, run_sql  # noqa: E402
@@ -33,19 +34,24 @@ app.add_middleware(
 def health():
     return {
         "ok": True,
-        "elevenlabs_key": bool(os.environ.get("ELEVENLABS_API_KEY")),
-        "agent_id": bool(os.environ.get("ELEVENLABS_AGENT_ID")),
-        "guide_agent_id": bool(os.environ.get("ELEVENLABS_GUIDE_AGENT_ID")),
+        "elevenlabs_account": eleven_account()[0],
+        "elevenlabs_key": bool(eleven_key()),
+        "agent_id": bool(eleven_agent_id("interviewer")),
+        "guide_agent_id": bool(eleven_agent_id("guide")),
     }
 
 
 @app.get("/api/eleven/token")
 def eleven_token(agent: str = "interviewer"):
     """Short-lived WebRTC token. agent=interviewer (mock interviews) or guide (voice navigation / question review)."""
-    env_var = "ELEVENLABS_GUIDE_AGENT_ID" if agent == "guide" else "ELEVENLABS_AGENT_ID"
-    key, agent_id = os.environ.get("ELEVENLABS_API_KEY"), os.environ.get(env_var)
+    account, suffix = eleven_account()
+    key, agent_id = eleven_key(), eleven_agent_id(agent)
     if not key or not agent_id:
-        raise HTTPException(500, f"Set ELEVENLABS_API_KEY and {env_var} in backend/.env (run create_agent.py)")
+        raise HTTPException(
+            500,
+            f"ElevenLabs account {account}: set ELEVENLABS_API_KEY{suffix} and {eleven_agent_var(agent)} in .env "
+            "(create agents with create_agent.py)",
+        )
     resp = httpx.get(
         f"{ELEVEN_BASE}/v1/convai/conversation/token",
         params={"agent_id": agent_id},
